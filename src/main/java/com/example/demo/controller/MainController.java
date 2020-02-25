@@ -1,5 +1,6 @@
 package com.example.demo.controller;
 
+import com.example.demo.dto.PointDto;
 import com.example.demo.model.Point;
 import com.example.demo.service.PointService;
 import lombok.RequiredArgsConstructor;
@@ -10,6 +11,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/points")
 @RequiredArgsConstructor
+@CrossOrigin
 public class MainController {
 
     private final PointService pointService;
@@ -25,12 +27,12 @@ public class MainController {
         return this.pointService.getPoints();
     }
 
-    @PostMapping("/")
-    public Point savePoint(Point point) {
-        return this.pointService.savePoint(point);
+    @PostMapping("/create")
+    public Point savePoint(PointDto pointDto) {
+        return this.pointService.savePoint(pointDto);
     }
 
-    @DeleteMapping("/{id}")
+    @DeleteMapping("/delete/{id}")
     public void deletePoint(@PathVariable("id") Integer id){
         this.pointService.deletePoint(id);
     }

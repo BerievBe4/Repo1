@@ -44,6 +44,17 @@ function init () {
         myMap.geoObjects
             .add(newGeoObject);
 
+        var url = 'localhost:8080/points/create';
+
+        $.post(
+            url,
+            {
+                coords: String(coords),
+            },
+            function (data) {
+                console.log(data);
+            });
+
     });
 
     myMap.geoObjects.events.add('dblclick', function (e){

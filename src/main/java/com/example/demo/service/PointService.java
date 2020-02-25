@@ -1,5 +1,6 @@
 package com.example.demo.service;
 
+import com.example.demo.dto.PointDto;
 import com.example.demo.model.Point;
 import com.example.demo.repository.PointRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,8 +24,14 @@ public class PointService {
         return pointRepository.findAll();
     }
 
-    public Point savePoint(Point point){
+    public Point savePoint(PointDto pointDto){
+        Point point = new Point(pointDto.getCoords());
+
+        System.out.println(pointDto);
+
         return pointRepository.save(point);
+
+
     }
 
     public void deletePoint(Integer id){
