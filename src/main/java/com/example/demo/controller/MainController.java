@@ -28,7 +28,7 @@ public class MainController {
     }
 
     @PostMapping("/create")
-    public Point savePoint(PointDto pointDto) {
+    public Integer savePoint(PointDto pointDto) {
         return this.pointService.savePoint(pointDto);
     }
 

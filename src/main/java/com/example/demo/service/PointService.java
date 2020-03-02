@@ -24,12 +24,12 @@ public class PointService {
         return pointRepository.findAll();
     }
 
-    public Point savePoint(PointDto pointDto){
+    public Integer savePoint(PointDto pointDto){
         Point point = new Point(pointDto.getCoords());
 
         System.out.println(pointDto);
 
-        return pointRepository.save(point);
+        return pointRepository.save(point).getId();
 
 
     }

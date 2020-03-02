@@ -31,8 +31,10 @@ function init () {
         for (let i = 0; i < array.length; i++){
             var length = array[i].coords.length;
             var middle = array[i].coords.indexOf(',');
-            var x = Number(array[i].coords.substring(0,middle-1));
-            var y = Number(array[i].coords.substring(middle,length));
+            var x = array[i].coords;
+            var y = array[i].coords;
+            x = Number(x.substring(0,middle));
+            y = Number(y.substring(middle+1));
             var newGeoObject = new ymaps.GeoObject({
                 geometry: {
                     type: "Point",
@@ -64,8 +66,7 @@ function init () {
         preset: 'islands#yellowIcon'
     });
 
-    myMap.events.add('click', function (e) {
-        var coords = e.get('coords');
+    function CreatePoint(coords,id){
         var newGeoObject = new ymaps.GeoObject({
             // Описание геометрии.
             geometry: {
@@ -76,7 +77,8 @@ function init () {
             properties: {
                 // Контент метки.
                 iconContent: 'Я',
-                hintContent: 'же'
+                hintContent: 'же',
+                myId: id
             }
         }, {
             // Опции.
@@ -88,8 +90,14 @@ function init () {
         newElem.add(newGeoObject);
         myMap.geoObjects
             .add(newGeoObject);
+    }
 
-        var url = 'localhost:8080/points/create';
+
+
+    myMap.events.add('click', function (e) {
+        var coords = e.get('coords');
+
+        const url = 'http://localhost:8080/points/create';
 
         $.post(
             url,
@@ -98,13 +106,22 @@ function init () {
             },
             function (data) {
                 console.log(data);
+                CreatePoint(coords,data);
             });
-
     });
+
+
 
     myMap.geoObjects.events.add('dblclick', function (e){
         var target = e.get('target');
+        var id = target.properties.get('myId');
         myMap.geoObjects.remove(target);
+
+        const url = 'http://localhost:8080/points/delete/' + id;
+
+        $.delete(
+            url,
+            );
     });
 
     myMap.geoObjects.events.add('click', function (e){
