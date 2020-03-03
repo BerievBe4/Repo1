@@ -14,6 +14,7 @@ function init () {
         zoom:10,
         controls: []
     });
+
     var array = [];
     var div = document.getElementById('map');
     var returnButton = '<button id="return">Восстановить</button>';
@@ -28,23 +29,19 @@ function init () {
             array.push(...result);
         });
 
-        for (let i = 0; i < array.length; i++){
-            var length = array[i].coords.length;
-            var middle = array[i].coords.indexOf(',');
-            var x = array[i].coords;
-            var y = array[i].coords;
-            x = Number(x.substring(0,middle));
-            y = Number(y.substring(middle+1));
+        for (let i = 0; i < array.length; i++) {
+            var arr = array[i].coords.split(',');
             var newGeoObject = new ymaps.GeoObject({
                 geometry: {
                     type: "Point",
-                    coordinates: [x,y]
+                    coordinates: [arr[0], arr[1]]
                 },
                 // Свойства.
                 properties: {
                     // Контент метки.
                     iconContent: 'Я',
-                    hintContent: 'же'
+                    hintContent: 'же',
+                    myId: array[i].id
                 }
             }, {
                 // Опции.
@@ -57,17 +54,14 @@ function init () {
             myMap.geoObjects
                 .add(newGeoObject);
         }
-
-
-
     });
+
 
     var newElem = new ymaps.GeoObjectCollection(null, {
         preset: 'islands#yellowIcon'
     });
 
-    myMap.events.add('click', function (e) {
-        var coords = e.get('coords');
+    function CreatePoint(coords,id){
         var newGeoObject = new ymaps.GeoObject({
             // Описание геометрии.
             geometry: {
@@ -78,7 +72,8 @@ function init () {
             properties: {
                 // Контент метки.
                 iconContent: 'Я',
-                hintContent: 'же'
+                hintContent: 'же',
+                myId: id
             }
         }, {
             // Опции.
@@ -90,6 +85,43 @@ function init () {
         newElem.add(newGeoObject);
         myMap.geoObjects
             .add(newGeoObject);
+    }
+
+    function CreatePolyline(coords,id){
+        var newGeoObject = new ymaps.GeoObject({
+            // Описание геометрии.
+            geometry: {
+                coordinates: coords
+            },
+            // Свойства.
+            properties: {
+                myId: id
+            }
+        }, {});
+        newElem.add(newGeoObject);
+        myMap.geoObjects
+            .add(newGeoObject);
+    }
+
+    function CreatePolygon(coords,id){
+        var newGeoObject = new ymaps.GeoObject({
+            // Описание геометрии.
+            geometry: {
+                coordinates: coords
+            },
+            // Свойства.
+            properties: {
+                myId: id
+            }
+        }, {});
+        newElem.add(newGeoObject);
+        myMap.geoObjects
+            .add(newGeoObject);
+    }
+
+
+    myMap.events.add('click', function (e) {
+        var coords = e.get('coords');
 
         const url = 'http://localhost:8080/points/create';
 
@@ -97,16 +129,48 @@ function init () {
             url,
             {
                 coords: String(coords),
+                type: 'point'
             },
             function (data) {
                 console.log(data);
+                CreatePoint(coords,data);
             });
-
     });
+
+
 
     myMap.geoObjects.events.add('dblclick', function (e){
         var target = e.get('target');
+        var id = target.properties.get('myId');
         myMap.geoObjects.remove(target);
+
+        const url = 'http://localhost:8080/points/delete/' + id;
+
+        $.ajax({
+            url: url,
+            type: 'DELETE'
+        });
+    });
+
+    myMap.geoObjects.events.add('dragend', function (e){
+        var target = e.get('target');
+        var id = target.properties.get('myId');
+        var coords = target.geometry.getCoordinates();
+
+
+
+        const url = 'http://localhost:8080/points/update/' + id;
+
+        $.ajax({
+            url: url,
+            data: {
+                id: id,
+                coords: String(coords)
+            },
+            type: 'POST'
+        });
+
+
     });
 
     myMap.geoObjects.events.add('click', function (e){
@@ -181,13 +245,42 @@ function init () {
             // Получаем координаты отрисованного контура.
             var coordinates = paintProcess.finishPaintingAt(e);
             paintProcess = null;
+            var isSelected = button.isSelected();
             // В зависимости от состояния кнопки добавляем на карту многоугольник или линию с полученными координатами.
+            // var geoObject = button.isSelected() ?
+            //     new ymaps.Polyline(coordinates, {}, styles[currentIndex]) :
+            //     new ymaps.Polygon([coordinates], {interactivityModel: 'default#transparent', fillColor: '#6699ff'}, styles[currentIndex]);
+
+
+            const url = 'http://localhost:8080/points/create';
+
+            if (isSelected){
+                $.post(
+                    url,
+                    {
+                        coords: String(coordinates),
+                        type: 'polygon'
+                    },
+                    function (data) {
+                        console.log(data);
+                    });
+            }
+            else
+            {
+                $.post(
+                    url,
+                    {
+                        coords: String(coordinates),
+                        type: 'polyline'
+                    },
+                    function (data) {
+                        console.log(data);
+                    });
+            }
             var geoObject = button.isSelected() ?
                 new ymaps.Polyline(coordinates, {}, styles[currentIndex]) :
                 new ymaps.Polygon([coordinates], {interactivityModel: 'default#transparent', fillColor: '#6699ff'}, styles[currentIndex]);
-
             myMap.geoObjects.add(geoObject);
-
         }
     });
 }

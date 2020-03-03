@@ -14,6 +14,13 @@ function init () {
         zoom:10,
         controls: []
     });
+
+    var arr = [];
+
+    function parsePoints(arg){
+        arr = arg.split(',');
+    }
+
     var array = [];
     var div = document.getElementById('map');
     var returnButton = '<button id="return">Восстановить</button>';
@@ -28,39 +35,91 @@ function init () {
             array.push(...result);
         });
 
-        for (let i = 0; i < array.length; i++){
-            var length = array[i].coords.length;
-            var middle = array[i].coords.indexOf(',');
-            var x = array[i].coords;
-            var y = array[i].coords;
-            x = Number(x.substring(0,middle));
-            y = Number(y.substring(middle+1));
-            var newGeoObject = new ymaps.GeoObject({
-                geometry: {
-                    type: "Point",
-                    coordinates: [x,y]
-                },
-                // Свойства.
-                properties: {
-                    // Контент метки.
-                    iconContent: 'Я',
-                    hintContent: 'же'
+        for (let i = 0; i < array.length; i++) {
+            if (array[i].type == 'point') {
+                parsePoints(array[i].coords)
+                var newGeoObject = new ymaps.GeoObject({
+                    geometry: {
+                        type: "Point",
+                        coordinates: [arr[0], arr[1]]
+                    },
+                    // Свойства.
+                    properties: {
+                        // Контент метки.
+                        iconContent: 'Я',
+                        hintContent: 'же',
+                        myId: array[i].id
+                    }
+                }, {
+                    // Опции.
+                    // Иконка метки будет растягиваться под размер ее содержимого.
+                    preset: 'islands#blackStretchyIcon',
+                    // Метку можно перемещать.
+                    draggable: true
+                });
+                newElem.add(newGeoObject);
+                myMap.geoObjects
+                    .add(newGeoObject);
+            }
+            if (array[i].type == 'polygon') {
+                var DataSource = array[i].coords.split(',');
+                var OuterArray = [];
+                for (let i = 0; i < DataSource.length / 2; i++){
+                    OuterArray[i] = [DataSource[2*i],DataSource[2*i+1]];
                 }
-            }, {
-                // Опции.
-                // Иконка метки будет растягиваться под размер ее содержимого.
-                preset: 'islands#blackStretchyIcon',
-                // Метку можно перемещать.
-                draggable: true
-            });
-            newElem.add(newGeoObject);
-            myMap.geoObjects
-                .add(newGeoObject);
+
+                var myPolygon = new ymaps.Polygon([
+                            OuterArray
+                    ],
+                    // Описываем свойства геообъекта.
+                    {
+                        myId: array[i].id
+                    }, {
+
+                    }
+                );
+                myMap.geoObjects
+                    .add(myPolygon);
+            }
+
+            if (array[i].type == 'polyline') {
+                var DataSource = array[i].coords.split(',');
+                var OuterArray = [];
+                for (let i = 0; i < DataSource.length / 2; i++){
+                    OuterArray[i] = [DataSource[2*i],DataSource[2*i+1]];
+                }
+
+                var newGeoObject = new ymaps.GeoObject({
+                    // Описываем геометрию геообъекта.
+                    geometry: {
+                        // Тип геометрии - "Ломаная линия".
+                        type: "LineString",
+                        // Указываем координаты вершин ломаной.
+                        coordinates: OuterArray
+                    },
+                    // Описываем свойства геообъекта.
+                    properties:{
+                        // Содержимое балуна.
+                        hintContent: "Меня можно тыкать",
+                        myId: array[i].id
+                    }
+                }, {
+                    // Задаем опции геообъекта.
+                    // Включаем возможность перетаскивания ломаной.
+                    draggable: true,
+                    // Цвет линии.
+                    strokeColor: "#FFFF00",
+                    // Ширина линии.
+                    strokeWidth: 5
+                });
+                newElem.add(newGeoObject);
+                myMap.geoObjects
+                    .add(newGeoObject);
+            }
+
         }
-
-
-
     });
+
 
     var newElem = new ymaps.GeoObjectCollection(null, {
         preset: 'islands#yellowIcon'
@@ -92,8 +151,6 @@ function init () {
             .add(newGeoObject);
     }
 
-
-
     myMap.events.add('click', function (e) {
         var coords = e.get('coords');
 
@@ -103,6 +160,7 @@ function init () {
             url,
             {
                 coords: String(coords),
+                type: 'point'
             },
             function (data) {
                 console.log(data);
@@ -119,9 +177,31 @@ function init () {
 
         const url = 'http://localhost:8080/points/delete/' + id;
 
-        $.delete(
-            url,
-            );
+        $.ajax({
+            url: url,
+            type: 'DELETE'
+        });
+    });
+
+    myMap.geoObjects.events.add('dragend', function (e){
+        var target = e.get('target');
+        var id = target.properties.get('myId');
+        var coords = target.geometry.getCoordinates();
+
+
+
+        const url = 'http://localhost:8080/points/update/' + id;
+
+        $.ajax({
+            url: url,
+            data: {
+                id: id,
+                coords: String(coords)
+            },
+            type: 'POST'
+        });
+
+
     });
 
     myMap.geoObjects.events.add('click', function (e){
@@ -196,13 +276,42 @@ function init () {
             // Получаем координаты отрисованного контура.
             var coordinates = paintProcess.finishPaintingAt(e);
             paintProcess = null;
+            var isSelected = button.isSelected();
             // В зависимости от состояния кнопки добавляем на карту многоугольник или линию с полученными координатами.
+            // var geoObject = button.isSelected() ?
+            //     new ymaps.Polyline(coordinates, {}, styles[currentIndex]) :
+            //     new ymaps.Polygon([coordinates], {interactivityModel: 'default#transparent', fillColor: '#6699ff'}, styles[currentIndex]);
+
+
+            const url = 'http://localhost:8080/points/create';
+
+            if (!isSelected){
+                $.post(
+                    url,
+                    {
+                        coords: String(coordinates),
+                        type: 'polygon'
+                    },
+                    function (data) {
+                        console.log(data);
+                    });
+            }
+            else
+            {
+                $.post(
+                    url,
+                    {
+                        coords: String(coordinates),
+                        type: 'polyline'
+                    },
+                    function (data) {
+                        console.log(data);
+                    });
+            }
             var geoObject = button.isSelected() ?
                 new ymaps.Polyline(coordinates, {}, styles[currentIndex]) :
                 new ymaps.Polygon([coordinates], {interactivityModel: 'default#transparent', fillColor: '#6699ff'}, styles[currentIndex]);
-
             myMap.geoObjects.add(geoObject);
-
         }
     });
 }

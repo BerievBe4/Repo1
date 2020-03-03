@@ -1,7 +1,16 @@
 package com.example.demo.dto;
 
-public class PointDto {
+public class ObjectDto {
     private String coords;
+    private String type;
+
+    public String getType() {
+        return type;
+    }
+
+    public void setType(String type) {
+        this.type = type;
+    }
 
     @Override
     public String toString() {
