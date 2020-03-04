@@ -22,7 +22,7 @@ public class MainController {
         return this.objectService.getObject(id);
     }
 
-    @GetMapping("/")
+    @GetMapping("/all")
     public List<Object> getObject() {
         return this.objectService.getObjects();
     }

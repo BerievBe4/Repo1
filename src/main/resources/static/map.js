@@ -26,14 +26,36 @@ function init () {
     var returnButton = '<button id="return">Восстановить</button>';
     div.insertAdjacentHTML('beforeend', returnButton);
     var currentButton = document.getElementById('return');
+
+
     currentButton.addEventListener('click',function (event) {
         array.splice();
-        const response = $.get(
-            'http://localhost:8080/points/',
-        );
-        response.done(function (result) {
-            array.push(...result);
-        });
+        /*const response = fetch(
+            'http://localhost:8080/points/all'/*,
+            function (data) {
+                console.log('Success');
+                console.log('Data on success:');
+                console.log(data);
+                array.push(...data);
+            }
+        );*/
+
+        //var dataFromServer = response.result;
+        //array.push(dataFromServer);
+        // console.log('Data in array:');
+        // console.log(array);
+        // () {
+        //
+        // if (response.ok){
+        //     array.push(response.formData())
+        //     console.log(response.json());
+        // };
+
+    // .then(response => response.json()).then(commits => alert(response.text()))
+
+        let response = fetch('http://localhost:8080/points/all').then(response => response.json()).then(commits => console.log(commits[0].coords));
+
+        array.push(response);
 
         for (let i = 0; i < array.length; i++) {
             if (array[i].type == 'point') {
@@ -238,6 +260,19 @@ function init () {
                 target.editor.startEditing();
             } else {
                 target.editor.stopEditing();
+                var coords = target.geometry.getCoordinates();
+                var id = target.properties.get('myId');
+
+                const url = 'http://localhost:8080/points/update/' + id;
+
+                $.ajax({
+                    url: url,
+                    data: {
+                        id: id,
+                        coords: String(coords)
+                    },
+                    type: 'POST'
+                });
             }
         }
     });

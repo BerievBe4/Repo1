@@ -15,6 +15,12 @@ function init () {
         controls: []
     });
 
+    var arr = [];
+
+    function parsePoints(arg){
+        arr = arg.split(',');
+    }
+
     var array = [];
     var div = document.getElementById('map');
     var returnButton = '<button id="return">Восстановить</button>';
@@ -23,36 +29,98 @@ function init () {
     currentButton.addEventListener('click',function (event) {
         array.splice();
         const response = $.get(
-            'http://localhost:8080/points/',
+            'http://localhost:8080/points/all',
+            function (data) {
+                array.push(...data);
+            }
         );
-        response.done(function (result) {
-            array.push(...result);
-        });
+        console.log(array);
+        // response.done(function (result) {
+        //     array.push(...result);
+        // });
 
         for (let i = 0; i < array.length; i++) {
-            var arr = array[i].coords.split(',');
-            var newGeoObject = new ymaps.GeoObject({
-                geometry: {
-                    type: "Point",
-                    coordinates: [arr[0], arr[1]]
-                },
-                // Свойства.
-                properties: {
-                    // Контент метки.
-                    iconContent: 'Я',
-                    hintContent: 'же',
-                    myId: array[i].id
+            if (array[i].type == 'point') {
+                parsePoints(array[i].coords)
+                var newGeoObject = new ymaps.GeoObject({
+                    geometry: {
+                        type: "Point",
+                        coordinates: [arr[0], arr[1]]
+                    },
+                    // Свойства.
+                    properties: {
+                        // Контент метки.
+                        iconContent: 'Я',
+                        hintContent: 'же',
+                        myId: array[i].id
+                    }
+                }, {
+                    // Опции.
+                    // Иконка метки будет растягиваться под размер ее содержимого.
+                    preset: 'islands#blackStretchyIcon',
+                    // Метку можно перемещать.
+                    draggable: true
+                });
+                newElem.add(newGeoObject);
+                myMap.geoObjects
+                    .add(newGeoObject);
+            }
+            if (array[i].type == 'polygon') {
+                var DataSource = array[i].coords.split(',');
+                var OuterArray = [];
+                for (let i = 0; i < DataSource.length / 2; i++){
+                    OuterArray[i] = [DataSource[2*i],DataSource[2*i+1]];
                 }
-            }, {
-                // Опции.
-                // Иконка метки будет растягиваться под размер ее содержимого.
-                preset: 'islands#blackStretchyIcon',
-                // Метку можно перемещать.
-                draggable: true
-            });
-            newElem.add(newGeoObject);
-            myMap.geoObjects
-                .add(newGeoObject);
+
+                var myPolygon = new ymaps.Polygon([
+                            OuterArray
+                    ],
+                    // Описываем свойства геообъекта.
+                    {
+                        myId: array[i].id
+                    }, {
+
+                    }
+                );
+                myMap.geoObjects
+                    .add(myPolygon);
+            }
+
+            if (array[i].type == 'polyline') {
+                var DataSource = array[i].coords.split(',');
+                var OuterArray = [];
+                for (let i = 0; i < DataSource.length / 2; i++){
+                    OuterArray[i] = [DataSource[2*i],DataSource[2*i+1]];
+                }
+
+                var newGeoObject = new ymaps.GeoObject({
+                    // Описываем геометрию геообъекта.
+                    geometry: {
+                        // Тип геометрии - "Ломаная линия".
+                        type: "LineString",
+                        // Указываем координаты вершин ломаной.
+                        coordinates: OuterArray
+                    },
+                    // Описываем свойства геообъекта.
+                    properties:{
+                        // Содержимое балуна.
+                        hintContent: "Меня можно тыкать",
+                        myId: array[i].id
+                    }
+                }, {
+                    // Задаем опции геообъекта.
+                    // Включаем возможность перетаскивания ломаной.
+                    draggable: true,
+                    // Цвет линии.
+                    strokeColor: "#FFFF00",
+                    // Ширина линии.
+                    strokeWidth: 5
+                });
+                newElem.add(newGeoObject);
+                myMap.geoObjects
+                    .add(newGeoObject);
+            }
+
         }
     });
 
@@ -86,39 +154,6 @@ function init () {
         myMap.geoObjects
             .add(newGeoObject);
     }
-
-    function CreatePolyline(coords,id){
-        var newGeoObject = new ymaps.GeoObject({
-            // Описание геометрии.
-            geometry: {
-                coordinates: coords
-            },
-            // Свойства.
-            properties: {
-                myId: id
-            }
-        }, {});
-        newElem.add(newGeoObject);
-        myMap.geoObjects
-            .add(newGeoObject);
-    }
-
-    function CreatePolygon(coords,id){
-        var newGeoObject = new ymaps.GeoObject({
-            // Описание геометрии.
-            geometry: {
-                coordinates: coords
-            },
-            // Свойства.
-            properties: {
-                myId: id
-            }
-        }, {});
-        newElem.add(newGeoObject);
-        myMap.geoObjects
-            .add(newGeoObject);
-    }
-
 
     myMap.events.add('click', function (e) {
         var coords = e.get('coords');
@@ -207,6 +242,19 @@ function init () {
                 target.editor.startEditing();
             } else {
                 target.editor.stopEditing();
+                var coords = target.geometry.getCoordinates();
+                var id = target.properties.get('myId');
+
+                const url = 'http://localhost:8080/points/update/' + id;
+
+                $.ajax({
+                    url: url,
+                    data: {
+                        id: id,
+                        coords: String(coords)
+                    },
+                    type: 'POST'
+                });
             }
         }
     });
@@ -254,7 +302,7 @@ function init () {
 
             const url = 'http://localhost:8080/points/create';
 
-            if (isSelected){
+            if (!isSelected){
                 $.post(
                     url,
                     {
