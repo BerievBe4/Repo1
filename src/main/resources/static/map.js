@@ -5,142 +5,58 @@ ymaps.ready(init);
 ymaps.ready(['ext.paintOnMap']);
 
 function init () {
-    // Создание экземпляра карты и его привязка к контейнеру с
-    // заданным id ("map").
     myMap = new ymaps.Map('map', {
-        // При инициализации карты обязательно нужно указать
-        // её центр и коэффициент масштабирования.
         center:[55.76, 37.64], // Москва
         zoom:10,
         controls: []
     });
-
-    var arr = [];
-
-    function parsePoints(arg){
+    function ParsePoints(arg){
+        var arr = [];
         arr = arg.split(',');
+        return arr;
     }
 
-    var array = [];
-    var div = document.getElementById('map');
-    var returnButton = '<button id="return">Восстановить</button>';
-    div.insertAdjacentHTML('beforeend', returnButton);
-    var currentButton = document.getElementById('return');
+    function ParseGeoObjects(arg) {
+        var DataSource = arg.split(',');
+        var OuterArray = [];
+        for (let i = 0; i < DataSource.length / 2; i++){
+            OuterArray[i] = [DataSource[2*i],DataSource[2*i+1]];
+        }
+        return OuterArray;
+    }
 
-
-    currentButton.addEventListener('click',function (event) {
+    function Initialize(){
+        var array = [];
         array.splice();
-        /*const response = fetch(
-            'http://localhost:8080/points/all'/*,
-            function (data) {
-                console.log('Success');
-                console.log('Data on success:');
-                console.log(data);
-                array.push(...data);
-            }
-        );*/
 
-        //var dataFromServer = response.result;
-        //array.push(dataFromServer);
-        // console.log('Data in array:');
-        // console.log(array);
-        // () {
-        //
-        // if (response.ok){
-        //     array.push(response.formData())
-        //     console.log(response.json());
-        // };
-
-    // .then(response => response.json()).then(commits => alert(response.text()))
-
-        let response = fetch('http://localhost:8080/points/all').then(response => response.json()).then(commits => console.log(commits[0].coords));
-
-        array.push(response);
+        const response = $.get(
+            'http://localhost:8080/geoObjects/all'
+        );
+        response.done(function (result) {
+            array.push(...result);
+            DrawAll(array);
+        });
+    }
+        function DrawAll(array){
 
         for (let i = 0; i < array.length; i++) {
-            if (array[i].type == 'point') {
-                parsePoints(array[i].coords)
-                var newGeoObject = new ymaps.GeoObject({
-                    geometry: {
-                        type: "Point",
-                        coordinates: [arr[0], arr[1]]
-                    },
-                    // Свойства.
-                    properties: {
-                        // Контент метки.
-                        iconContent: 'Я',
-                        hintContent: 'же',
-                        myId: array[i].id
-                    }
-                }, {
-                    // Опции.
-                    // Иконка метки будет растягиваться под размер ее содержимого.
-                    preset: 'islands#blackStretchyIcon',
-                    // Метку можно перемещать.
-                    draggable: true
-                });
-                newElem.add(newGeoObject);
-                myMap.geoObjects
-                    .add(newGeoObject);
+            switch(array[i].type){
+                case 'point':
+                    CreatePoint(ParsePoints(array[i].coords),array[i].id);
+                    break;
+                case 'polygon':
+                    CreatePolygon(ParseGeoObjects(array[i].coords),array[i].id);
+                    break;
+                case 'polyline':
+                    CreatePolyline(ParseGeoObjects(array[i].coords),array[i].id);
+                    break;
+                default:
+                    alert('Error');
             }
-            if (array[i].type == 'polygon') {
-                var DataSource = array[i].coords.split(',');
-                var OuterArray = [];
-                for (let i = 0; i < DataSource.length / 2; i++){
-                    OuterArray[i] = [DataSource[2*i],DataSource[2*i+1]];
-                }
-
-                var myPolygon = new ymaps.Polygon([
-                            OuterArray
-                    ],
-                    // Описываем свойства геообъекта.
-                    {
-                        myId: array[i].id
-                    }, {
-
-                    }
-                );
-                myMap.geoObjects
-                    .add(myPolygon);
-            }
-
-            if (array[i].type == 'polyline') {
-                var DataSource = array[i].coords.split(',');
-                var OuterArray = [];
-                for (let i = 0; i < DataSource.length / 2; i++){
-                    OuterArray[i] = [DataSource[2*i],DataSource[2*i+1]];
-                }
-
-                var newGeoObject = new ymaps.GeoObject({
-                    // Описываем геометрию геообъекта.
-                    geometry: {
-                        // Тип геометрии - "Ломаная линия".
-                        type: "LineString",
-                        // Указываем координаты вершин ломаной.
-                        coordinates: OuterArray
-                    },
-                    // Описываем свойства геообъекта.
-                    properties:{
-                        // Содержимое балуна.
-                        hintContent: "Меня можно тыкать",
-                        myId: array[i].id
-                    }
-                }, {
-                    // Задаем опции геообъекта.
-                    // Включаем возможность перетаскивания ломаной.
-                    draggable: true,
-                    // Цвет линии.
-                    strokeColor: "#FFFF00",
-                    // Ширина линии.
-                    strokeWidth: 5
-                });
-                newElem.add(newGeoObject);
-                myMap.geoObjects
-                    .add(newGeoObject);
-            }
-
         }
-    });
+    }
+
+    Initialize();
 
 
     var newElem = new ymaps.GeoObjectCollection(null, {
@@ -149,24 +65,52 @@ function init () {
 
     function CreatePoint(coords,id){
         var newGeoObject = new ymaps.GeoObject({
-            // Описание геометрии.
             geometry: {
                 type: "Point",
                 coordinates: coords
             },
-            // Свойства.
             properties: {
-                // Контент метки.
-                iconContent: 'Я',
-                hintContent: 'же',
+                iconContent: 'Иконка',
+                hintContent: 'Подсказка',
                 myId: id
             }
         }, {
-            // Опции.
-            // Иконка метки будет растягиваться под размер ее содержимого.
             preset: 'islands#blackStretchyIcon',
-            // Метку можно перемещать.
             draggable: true
+        });
+        newElem.add(newGeoObject);
+        myMap.geoObjects
+            .add(newGeoObject);
+    }
+
+    function CreatePolygon(arg,id){
+        var myPolygon = new ymaps.Polygon([
+                arg
+            ],
+            {
+                myId: id
+            }, {
+
+            }
+        );
+        myMap.geoObjects
+            .add(myPolygon);
+    }
+
+    function CreatePolyline(arg,id){
+        var newGeoObject = new ymaps.GeoObject({
+            geometry: {
+                type: "LineString",
+                coordinates: arg
+            },
+            properties:{
+                hintContent: "Меня можно тыкать",
+                myId: id
+            }
+        }, {
+            draggable: true,
+            strokeColor: "#FFFF00",
+            strokeWidth: 5
         });
         newElem.add(newGeoObject);
         myMap.geoObjects
@@ -176,8 +120,7 @@ function init () {
     myMap.events.add('click', function (e) {
         var coords = e.get('coords');
 
-        const url = 'http://localhost:8080/points/create';
-
+        const url = 'http://localhost:8080/geoObjects/create';
         $.post(
             url,
             {
@@ -197,8 +140,7 @@ function init () {
         var id = target.properties.get('myId');
         myMap.geoObjects.remove(target);
 
-        const url = 'http://localhost:8080/points/delete/' + id;
-
+        const url = 'http://localhost:8080/geoObjects/delete/' + id;
         $.ajax({
             url: url,
             type: 'DELETE'
@@ -210,10 +152,7 @@ function init () {
         var id = target.properties.get('myId');
         var coords = target.geometry.getCoordinates();
 
-
-
-        const url = 'http://localhost:8080/points/update/' + id;
-
+        const url = 'http://localhost:8080/geoObjects/update/' + id;
         $.ajax({
             url: url,
             data: {
@@ -231,28 +170,18 @@ function init () {
         var target = e.get('target');
         if (e.get('ctrlKey')){
             var coords = e.get('coords');
-            var newGeoObject = new ymaps.GeoObject({
-                // Описание геометрии.
-                geometry: {
-                    type: "Point",
-                    coordinates: coords
+
+            const url = 'http://localhost:8080/geoObjects/create';
+            $.post(
+                url,
+                {
+                    coords: String(coords),
+                    type: 'point'
                 },
-                // Свойства.
-                properties: {
-                    // Контент метки.
-                    iconContent: 'Я',
-                    hintContent: 'же'
-                }
-            }, {
-                // Опции.
-                // Иконка метки будет растягиваться под размер ее содержимого.
-                preset: 'islands#blackStretchyIcon',
-                // Метку можно перемещать.
-                draggable: true
-            });
-            newElem.add(newGeoObject);
-            myMap.geoObjects
-                .add(newGeoObject);
+                function (data) {
+                    console.log(data);
+                    CreatePoint(coords,data);
+                });
         }
         else {
             var state = target.editor.state.get('editing');
@@ -263,8 +192,7 @@ function init () {
                 var coords = target.geometry.getCoordinates();
                 var id = target.properties.get('myId');
 
-                const url = 'http://localhost:8080/points/update/' + id;
-
+                const url = 'http://localhost:8080/geoObjects/update/' + id;
                 $.ajax({
                     url: url,
                     data: {
@@ -282,7 +210,6 @@ function init () {
 
     var paintProcess;
 
-    // Опции многоугольника или линии.
     var styles = [
         {strokeColor: '#ff00ff', strokeOpacity: 0.7, strokeWidth: 3, fillColor: '#ff00ff', fillOpacity: 0.4}
     ];
@@ -296,29 +223,20 @@ function init () {
     var button = new ymaps.control.Button({data: {content: 'Polygon / Polyline'}, options: {maxWidth: 150}});
     myMap.controls.add(button);
 
-    // Подпишемся на событие нажатия кнопки мыши.
     myMap.events.add('mousedown', function (e) {
-        // Если кнопка мыши была нажата с зажатой клавишей "alt", то начинаем рисование контура.
         if (e.get('altKey')) {
             paintProcess = ymaps.ext.paintOnMap(myMap, e, {style: styles[currentIndex]});
         }
     });
 
-    // Подпишемся на событие отпускания кнопки мыши.
     myMap.events.add('mouseup', function (e) {
         if (paintProcess) {
 
-            // Получаем координаты отрисованного контура.
             var coordinates = paintProcess.finishPaintingAt(e);
             paintProcess = null;
             var isSelected = button.isSelected();
-            // В зависимости от состояния кнопки добавляем на карту многоугольник или линию с полученными координатами.
-            // var geoObject = button.isSelected() ?
-            //     new ymaps.Polyline(coordinates, {}, styles[currentIndex]) :
-            //     new ymaps.Polygon([coordinates], {interactivityModel: 'default#transparent', fillColor: '#6699ff'}, styles[currentIndex]);
 
-
-            const url = 'http://localhost:8080/points/create';
+            const url = 'http://localhost:8080/geoObjects/create';
 
             if (!isSelected){
                 $.post(

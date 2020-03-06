@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/points")
+@RequestMapping("/geoObjects")
 @RequiredArgsConstructor
 @CrossOrigin
 public class MainController {
