@@ -25,23 +25,19 @@ function init () {
         return OuterArray;
     }
 
-    var div = document.getElementById('map');
-    var returnButton = '<button id="return">Восстановить</button>';
-    div.insertAdjacentHTML('beforeend', returnButton);
-    var currentButton = document.getElementById('return');
-
-
-    currentButton.addEventListener('click',function (event) {
+    function Initialize(){
         var array = [];
         array.splice();
 
         const response = $.get(
-            'http://localhost:8080/geoObjects/all',
+            'http://localhost:8080/geoObjects/all'
         );
         response.done(function (result) {
             array.push(...result);
+            DrawAll(array);
         });
-
+    }
+        function DrawAll(array){
 
         for (let i = 0; i < array.length; i++) {
             switch(array[i].type){
@@ -58,7 +54,9 @@ function init () {
                     alert('Error');
             }
         }
-    });
+    }
+
+    Initialize();
 
 
     var newElem = new ymaps.GeoObjectCollection(null, {
