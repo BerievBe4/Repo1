@@ -1,5 +1,6 @@
 package com.example.demo.model;
 
+import com.example.demo.dto.GeoObjectDto;
 import lombok.Data;
 import org.hibernate.annotations.Type;
 
@@ -7,7 +8,7 @@ import javax.persistence.*;
 @Data
 @Entity
 @Table(name = "point")
-public class Object {
+public class GeoObject {
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
     private Integer id;
@@ -24,13 +25,18 @@ public class Object {
         this.type = type;
     }
 
-    public Object() {
+    public GeoObject() {
     }
 
-    public Object(String coords) {
+    public GeoObject(String coords) {
         this.coords = coords;
     }
 
+
+    public GeoObject(GeoObjectDto objectDto){
+        this.coords = objectDto.getCoords();
+        this.type = objectDto.getType();
+    }
 
     public String getCoords() {
         return coords;

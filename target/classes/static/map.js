@@ -10,6 +10,44 @@ function init () {
         zoom:10,
         controls: []
     });
+
+    var deleteAllButton = new ymaps.control.Button({
+        data: {
+            content: 'Delete all'
+        },
+        options: {
+            selectOnClick: false
+        }
+    });
+
+    myMap.controls.add(deleteAllButton, {float: 'left'});
+
+    var reloadButton = new ymaps.control.Button({
+        data: {
+            content: 'Reload all'
+        },
+        options: {
+            selectOnClick: false,
+            maxWidth: [30, 100, 150]
+        }
+    });
+
+    myMap.controls.add(reloadButton, {float: 'left'});
+
+    deleteAllButton.events.add('click', function (e){
+        const url = 'http://localhost:8080/geoObjects/deleteall';
+        $.ajax({
+            url: url,
+            type: 'DELETE'
+        });
+        myMap.geoObjects.removeAll();
+    });
+
+    reloadButton.events.add('click', function (e){
+        myMap.geoObjects.removeAll();
+        Initialize();
+    });
+
     function ParsePoints(arg){
         var arr = [];
         arr = arg.split(',');
@@ -29,15 +67,17 @@ function init () {
         var array = [];
         array.splice();
 
-        const response = $.get(
-            'http://localhost:8080/geoObjects/all'
+        const response = $.ajax({
+            url: 'http://localhost:8080/geoObjects/all',
+            type: 'GET'
+            }
         );
         response.done(function (result) {
             array.push(...result);
-            DrawAll(array);
+            DrawAll(result);
         });
     }
-        function DrawAll(array){
+    function DrawAll(array){
 
         for (let i = 0; i < array.length; i++) {
             switch(array[i].type){
@@ -109,7 +149,7 @@ function init () {
             }
         }, {
             draggable: true,
-            strokeColor: "#FFFF00",
+            strokeColor: "#ff00ff",
             strokeWidth: 5
         });
         newElem.add(newGeoObject);
@@ -117,7 +157,7 @@ function init () {
             .add(newGeoObject);
     }
 
-    myMap.events.add('click', function (e) {
+    function addMarker(e) {
         var coords = e.get('coords');
 
         const url = 'http://localhost:8080/geoObjects/create';
@@ -125,22 +165,25 @@ function init () {
             url,
             {
                 coords: String(coords),
-                type: 'point'
+                type: 'point',
+                dataType: 'json'
             },
             function (data) {
                 console.log(data);
                 CreatePoint(coords,data);
             });
-    });
+    }
+
+    myMap.events.add('click', addMarker);
 
 
 
     myMap.geoObjects.events.add('dblclick', function (e){
         var target = e.get('target');
-        var id = target.properties.get('myId');
+        var myId = target.properties.get('myId');
         myMap.geoObjects.remove(target);
 
-        const url = 'http://localhost:8080/geoObjects/delete/' + id;
+        const url = 'http://localhost:8080/geoObjects/delete/' + myId;
         $.ajax({
             url: url,
             type: 'DELETE'
@@ -149,14 +192,13 @@ function init () {
 
     myMap.geoObjects.events.add('dragend', function (e){
         var target = e.get('target');
-        var id = target.properties.get('myId');
+        var myId = target.properties.get('myId');
         var coords = target.geometry.getCoordinates();
 
-        const url = 'http://localhost:8080/geoObjects/update/' + id;
+        const url = 'http://localhost:8080/geoObjects/update/' + myId;
         $.ajax({
             url: url,
             data: {
-                id: id,
                 coords: String(coords)
             },
             type: 'POST'
@@ -169,19 +211,7 @@ function init () {
 
         var target = e.get('target');
         if (e.get('ctrlKey')){
-            var coords = e.get('coords');
-
-            const url = 'http://localhost:8080/geoObjects/create';
-            $.post(
-                url,
-                {
-                    coords: String(coords),
-                    type: 'point'
-                },
-                function (data) {
-                    console.log(data);
-                    CreatePoint(coords,data);
-                });
+            addMarker(e);
         }
         else {
             var state = target.editor.state.get('editing');
@@ -232,7 +262,7 @@ function init () {
     myMap.events.add('mouseup', function (e) {
         if (paintProcess) {
 
-            var coordinates = paintProcess.finishPaintingAt(e);
+            var coords = paintProcess.finishPaintingAt(e);
             paintProcess = null;
             var isSelected = button.isSelected();
 
@@ -242,11 +272,13 @@ function init () {
                 $.post(
                     url,
                     {
-                        coords: String(coordinates),
-                        type: 'polygon'
+                        coords: String(coords),
+                        type: 'polygon',
+                        dataType: 'json'
                     },
                     function (data) {
                         console.log(data);
+                        CreatePolygon(coords,data);
                     });
             }
             else
@@ -254,17 +286,15 @@ function init () {
                 $.post(
                     url,
                     {
-                        coords: String(coordinates),
-                        type: 'polyline'
+                        coords: String(coords),
+                        type: 'polyline',
+                        dataType: 'json'
                     },
                     function (data) {
                         console.log(data);
+                        CreatePolyline(coords,data);
                     });
             }
-            var geoObject = button.isSelected() ?
-                new ymaps.Polyline(coordinates, {}, styles[currentIndex]) :
-                new ymaps.Polygon([coordinates], {interactivityModel: 'default#transparent', fillColor: '#6699ff'}, styles[currentIndex]);
-            myMap.geoObjects.add(geoObject);
         }
     });
 }

@@ -10,6 +10,44 @@ function init () {
         zoom:10,
         controls: []
     });
+
+    var deleteAllButton = new ymaps.control.Button({
+        data: {
+            content: 'Delete all'
+        },
+        options: {
+            selectOnClick: false
+        }
+    });
+
+    myMap.controls.add(deleteAllButton, {float: 'left'});
+
+    var reloadButton = new ymaps.control.Button({
+        data: {
+            content: 'Reload all'
+        },
+        options: {
+            selectOnClick: false,
+            maxWidth: [30, 100, 150]
+        }
+    });
+
+    myMap.controls.add(reloadButton, {float: 'left'});
+
+    deleteAllButton.events.add('click', function (e){
+        const url = 'http://localhost:8080/geoObjects/deleteall';
+        $.ajax({
+            url: url,
+            type: 'DELETE'
+        });
+        myMap.geoObjects.removeAll();
+    });
+
+    reloadButton.events.add('click', function (e){
+        myMap.geoObjects.removeAll();
+        Initialize();
+    });
+
     function ParsePoints(arg){
         var arr = [];
         arr = arg.split(',');
@@ -25,35 +63,32 @@ function init () {
         return OuterArray;
     }
 
-    var style = [
-        {strokeColor: '#ff00ff', strokeOpacity: 0.7, strokeWidth: 3, fillColor: '#ff00ff', fillOpacity: 0.4}
-    ];
-
-
     function Initialize(){
         var array = [];
         array.splice();
 
-        const response = $.get(
-            'http://localhost:8080/geoObjects/all'
+        const response = $.ajax({
+            url: 'http://localhost:8080/geoObjects/all',
+            type: 'GET'
+            }
         );
         response.done(function (result) {
             array.push(...result);
-            DrawAll(array);
+            DrawAll(result);
         });
     }
-        function DrawAll(array){
+    function DrawAll(array){
 
         for (let i = 0; i < array.length; i++) {
             switch(array[i].type){
                 case 'point':
-                    AddPoint(ParsePoints(array[i].coords),array[i].id);
+                    CreatePoint(ParsePoints(array[i].coords),array[i].id);
                     break;
                 case 'polygon':
-                    AddPolygon(ParseGeoObjects(array[i].coords),array[i].id);
+                    CreatePolygon(ParseGeoObjects(array[i].coords),array[i].id);
                     break;
                 case 'polyline':
-                    AddPolyline(ParseGeoObjects(array[i].coords),array[i].id);
+                    CreatePolyline(ParseGeoObjects(array[i].coords),array[i].id);
                     break;
                 default:
                     alert('Error');
@@ -68,7 +103,7 @@ function init () {
         preset: 'islands#yellowIcon'
     });
 
-    function AddPoint(coords,id){
+    function CreatePoint(coords,id){
         var newGeoObject = new ymaps.GeoObject({
             geometry: {
                 type: "Point",
@@ -88,23 +123,21 @@ function init () {
             .add(newGeoObject);
     }
 
-    function AddPolygon(arg,id){
+    function CreatePolygon(arg,id){
         var myPolygon = new ymaps.Polygon([
                 arg
             ],
             {
-                myId: id,
-                interactivityModel: 'default#transparent',
-                fillColor: '#6699ff'
+                myId: id
             }, {
-                style
+
             }
         );
         myMap.geoObjects
             .add(myPolygon);
     }
 
-    function AddPolyline(arg,id){
+    function CreatePolyline(arg,id){
         var newGeoObject = new ymaps.GeoObject({
             geometry: {
                 type: "LineString",
@@ -114,13 +147,17 @@ function init () {
                 hintContent: "Меня можно тыкать",
                 myId: id
             }
+        }, {
+            draggable: true,
+            strokeColor: "#ff00ff",
+            strokeWidth: 5
         });
         newElem.add(newGeoObject);
         myMap.geoObjects
             .add(newGeoObject);
     }
 
-    myMap.events.add('click', function (e) {
+    function addMarker(e) {
         var coords = e.get('coords');
 
         const url = 'http://localhost:8080/geoObjects/create';
@@ -128,13 +165,16 @@ function init () {
             url,
             {
                 coords: String(coords),
-                type: 'point'
+                type: 'point',
+                dataType: 'json'
             },
             function (data) {
                 console.log(data);
-                AddPoint(coords,data);
+                CreatePoint(coords,data);
             });
-    });
+    }
+
+    myMap.events.add('click', addMarker);
 
 
 
@@ -171,19 +211,7 @@ function init () {
 
         var target = e.get('target');
         if (e.get('ctrlKey')){
-            var coords = e.get('coords');
-
-            const url = 'http://localhost:8080/geoObjects/create';
-            $.post(
-                url,
-                {
-                    coords: String(coords),
-                    type: 'point'
-                },
-                function (data) {
-                    console.log(data);
-                    AddPoint(coords,data);
-                });
+            addMarker(e);
         }
         else {
             var state = target.editor.state.get('editing');
@@ -192,12 +220,13 @@ function init () {
             } else {
                 target.editor.stopEditing();
                 var coords = target.geometry.getCoordinates();
-                var myId = target.properties.get('myId');
+                var id = target.properties.get('myId');
 
-                const url = 'http://localhost:8080/geoObjects/update/' + myId;
+                const url = 'http://localhost:8080/geoObjects/update/' + id;
                 $.ajax({
                     url: url,
                     data: {
+                        id: id,
                         coords: String(coords)
                     },
                     type: 'POST'
@@ -211,19 +240,29 @@ function init () {
 
     var paintProcess;
 
+    var styles = [
+        {strokeColor: '#ff00ff', strokeOpacity: 0.7, strokeWidth: 3, fillColor: '#ff00ff', fillOpacity: 0.4}
+    ];
+
+    var currentIndex = 0;
+
+
+
+
+    // Создадим кнопку для выбора типа рисуемого контура.
     var button = new ymaps.control.Button({data: {content: 'Polygon / Polyline'}, options: {maxWidth: 150}});
     myMap.controls.add(button);
 
     myMap.events.add('mousedown', function (e) {
         if (e.get('altKey')) {
-            paintProcess = ymaps.ext.paintOnMap(myMap, e, {style: style});
+            paintProcess = ymaps.ext.paintOnMap(myMap, e, {style: styles[currentIndex]});
         }
     });
 
     myMap.events.add('mouseup', function (e) {
         if (paintProcess) {
 
-            var coordinates = paintProcess.finishPaintingAt(e);
+            var coords = paintProcess.finishPaintingAt(e);
             paintProcess = null;
             var isSelected = button.isSelected();
 
@@ -233,8 +272,13 @@ function init () {
                 $.post(
                     url,
                     {
-                        coords: String(coordinates),
-                        type: 'polygon'
+                        coords: String(coords),
+                        type: 'polygon',
+                        dataType: 'json'
+                    },
+                    function (data) {
+                        console.log(data);
+                        CreatePolygon(coords,data);
                     });
             }
             else
@@ -242,14 +286,15 @@ function init () {
                 $.post(
                     url,
                     {
-                        coords: String(coordinates),
-                        type: 'polyline'
+                        coords: String(coords),
+                        type: 'polyline',
+                        dataType: 'json'
+                    },
+                    function (data) {
+                        console.log(data);
+                        CreatePolyline(coords,data);
                     });
             }
-            var geoObject = button.isSelected() ?
-                new ymaps.Polyline(coordinates, {}, style) :
-                new ymaps.Polygon([coordinates], {interactivityModel: 'default#transparent', fillColor: '#6699ff'}, style);
-            myMap.geoObjects.add(geoObject);
         }
     });
 }

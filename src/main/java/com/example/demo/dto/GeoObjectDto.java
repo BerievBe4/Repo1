@@ -1,6 +1,6 @@
 package com.example.demo.dto;
 
-public class ObjectDto {
+public class GeoObjectDto {
     private String coords;
     private String type;
 

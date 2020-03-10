@@ -1,8 +1,8 @@
 package com.example.demo.controller;
 
-import com.example.demo.dto.ObjectDto;
-import com.example.demo.model.Object;
-import com.example.demo.service.ObjectService;
+import com.example.demo.dto.GeoObjectDto;
+import com.example.demo.model.GeoObject;
+import com.example.demo.service.GeoObjectService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -14,31 +14,36 @@ import java.util.List;
 @CrossOrigin
 public class MainController {
 
-    private final ObjectService objectService;
+    private final GeoObjectService objectService;
 
 
     @GetMapping("/{id}")
-    public Object getObject(@PathVariable("id") Integer id) {
+    public GeoObject getObject(@PathVariable("id") Integer id) {
         return this.objectService.getObject(id);
     }
 
     @GetMapping("/all")
-    public List<Object> getObject() {
+    public List<GeoObject> getObject() {
         return this.objectService.getObjects();
     }
 
     @PostMapping("/create")
-    public Integer saveObject(ObjectDto objectDto) {
+    public Integer saveObject(GeoObjectDto objectDto) {
         return this.objectService.saveObject(objectDto);
     }
 
     @PostMapping("/update/{id}")
-    public void updateObject(@PathVariable("id") Integer id, ObjectDto objectDto) {
+    public void updateObject(@PathVariable("id") Integer id, GeoObjectDto objectDto) {
         this.objectService.updateObject(id, objectDto);
     }
 
     @DeleteMapping("/delete/{id}")
     public void deleteObject(@PathVariable("id") Integer id){
         this.objectService.deleteObject(id);
+    }
+
+    @DeleteMapping("/delete/all")
+    public void deleteAllObjects(){
+        this.objectService.deleteAllObjects();
     }
 }
